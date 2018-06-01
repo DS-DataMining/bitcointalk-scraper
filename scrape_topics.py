@@ -6,8 +6,8 @@ import os
 import sys
 import traceback
 
-startTopicId = 1
-stopTopicId = 50
+startTopicId = 2415854
+stopTopicId = 2415854
 
 logging.basicConfig(
     level=logging.INFO,
@@ -15,17 +15,17 @@ logging.basicConfig(
     datefmt='%m/%d/%Y %I:%M:%S %p')
 
 # Make sure we don't rescrape information already in the DB
-memoizer.remember()
+# memoizer.remember()
 
 for topicId in range(startTopicId, stopTopicId+1):
     logging.info(">Starting scrape of topic ID {0}...".format(topicId))
     try:
         topic = memoizer.scrapeTopic(topicId)
     except Exception as e:
-        print '-'*60
-        print "Could not request URL for topic {0}:".format(topicId)
-        print traceback.format_exc()
-        print '-'*60
+        print('-'*60)
+        print("Could not request URL for topic {0}:".format(topicId))
+        print(traceback.format_exc())
+        print('-'*60)
         logging.info(">Could not request URL for topic {0}:".format(topicId))
         continue
     logging.info(">Scraping related board...")
@@ -36,8 +36,9 @@ for topicId in range(startTopicId, stopTopicId+1):
         logging.info(">>Scraping page {0}...".format(pageNum))
         messages = memoizer.scrapeMessages(topic['id'], pageNum)
         for message in messages:
-            if message['member'] > 0:
-                memoizer.scrapeMember(message['member'])
+            # if message['member'] > 0:
+            #     memoizer.scrapeMember(message['member'])
+            print(message);
         logging.info(">>Done with page {0}.".format(pageNum))
     logging.info(">Done scraping topic ID {0}.".format(topicId))
 

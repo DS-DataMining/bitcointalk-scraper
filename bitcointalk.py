@@ -3,7 +3,7 @@ import codecs
 from datetime import date
 from datetime import datetime
 from datetime import time as tm
-import HTMLParser
+from html.parser import HTMLParser
 import json
 import logging
 import lxml.html
@@ -140,7 +140,7 @@ def parseProfile(html, todaysDate=datetime.utcnow().date()):
         "Bitcoin Address: ": "bitcoin_address",
         "Other contact info: ": "other_contact_info"
     }
-    for label, key in labelMapping.iteritems():
+    for label, key in labelMapping.items():
         data[key] = None
     data['website_link'] = None
     data['signature'] = None
@@ -173,7 +173,7 @@ def parseProfile(html, todaysDate=datetime.utcnow().date()):
 def parseTopicPage(html, todaysDate=datetime.utcnow().date()):
     """Method for parsing topic HTML. Will extract messages."""
     data = {}
-    h = HTMLParser.HTMLParser()
+    h = HTMLParser()
     docRoot = lxml.html.fromstring(html)
 
     # Parse the topic name
@@ -243,7 +243,7 @@ def parseTopicPage(html, todaysDate=datetime.utcnow().date()):
                 "td.td_headerandpost>table>tr>td>div.subject>a")[0]
             m['subject'] = subj.text
             m['link'] = subj.attrib['href']
-            m['id'] = long(m['link'].split('#msg')[-1])
+            m['id'] = int(m['link'].split('#msg')[-1])
 
             # Parse the message post time
             postTime = innerPost.cssselect(
@@ -421,7 +421,7 @@ class BitcointalkTest(unittest.TestCase):
         del firstMessage['content_no_quote_no_html']
 
         expectedFirstMessage = {
-            'id': long(53),
+            'id': int(53),
             'member': 16,
             'subject': 'Break on the supply\'s increase',
             'link': 'https://bitcointalk.org/index.php?topic=14.msg53#msg53',
