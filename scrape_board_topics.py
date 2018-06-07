@@ -51,11 +51,15 @@ def main(argv):
                         topicId))
                     continue
                 for topicPageNum in range(1, topic['num_pages'] + 1):
+                    print(topicPageNum)
+                    logging.info("Started scraping of topic {0}".format(topicPageNum))
                     messages = memoizer.scrapeMessages(topic['id'], topicPageNum)
                     for message in messages:
-                        # if message['member'] > 0:
-                            # memoizer.scrapeMember(message['member'])
-                        print(message)
+                        if message['member'] > 0:
+                            print(message['member'])
+                            message['member']=memoizer.scrapeMember(message['member'])
+                                # logging.info(e)
+                        # print(message)
 
         logging.info("All done.")
         logging.info("Made {0} requests in total.".format(bitcointalk.countRequested))
