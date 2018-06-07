@@ -2,8 +2,6 @@
 import bitcointalk
 import logging
 import memoizer
-import os
-import sys
 import traceback
 
 startTopicId = 2415854
@@ -12,10 +10,7 @@ stopTopicId = 2415854
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s %(levelname)s:%(message)s',
-    datefmt='%m/%d/%Y %I:%M:%S %p')
-
-# Make sure we don't rescrape information already in the DB
-# memoizer.remember()
+    datefmt='%m/%d/%Y %I:%M:%S %p')()
 
 for topicId in range(startTopicId, stopTopicId+1):
     logging.info(">Starting scrape of topic ID {0}...".format(topicId))

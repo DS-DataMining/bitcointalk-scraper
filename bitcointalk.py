@@ -18,29 +18,17 @@ import unittest
 baseUrl = "https://bitcointalk.org/index.php"
 countRequested = 0
 interReqTime = 2
-lastReqTime = None
-
 
 def _request(payloadString):
     """Private method for requesting an arbitrary query string."""
     global countRequested
-    global lastReqTime
-    if lastReqTime is not None and time.time() - lastReqTime < interReqTime:
-        timeToSleep = random()*(interReqTime-time.time()+lastReqTime)*2
-        logging.info("Sleeping for {0} seconds before request.".format(
-            timeToSleep))
-        time.sleep(timeToSleep)
-    logging.info("Issuing request for the following payload: {0}".format(
-        payloadString))
     r = requests.get("{0}?{1}".format(baseUrl, payloadString))
-    lastReqTime = time.time()
     countRequested += 1
     if r.status_code == requests.codes.ok:
         return r.text
     else:
         raise Exception("Could not process request. \
             Received status code {0}.".format(r.status_code))
-
 
 def requestBoardPage(boardId, topicOffest=0):
     """Method for requesting a board."""
@@ -102,7 +90,6 @@ def parseBoardPage(html):
     topics = docRoot.cssselect(
         "#bodyarea>div.tborder>table.bordercolor>tr")
     for topic in topics:
-        # print topic.text_content()
         topicCells = topic.cssselect("td")
         if len(topicCells) != 7:
             continue
@@ -116,6 +103,71 @@ def parseBoardPage(html):
 
     return data
 
+
+def parseBoardPageTopics(html):
+    """Method for parsing board HTML. Will extract topics and their IDs."""
+    data = {}
+
+    # Extract name
+    docRoot = lxml.html.fromstring(html)
+    data['name'] = docRoot.cssselect("title")[0].text
+
+    # Parse through board hierarchy
+    bodyArea = docRoot.cssselect("#bodyarea")[0]
+    linkNodes = bodyArea.cssselect("div > div > div")[0].cssselect("a.nav")
+    data['container'] = None
+    data['parent'] = None
+    for linkNode in linkNodes:
+        link = linkNode.attrib["href"]
+        linkText = linkNode.text
+        linkSuffix = link.split(baseUrl)[1]
+        # If this is the top level of the board continue
+        if linkSuffix == '':
+            continue
+        # If this is the container (second to the top level)
+        elif linkSuffix[0] == '#':
+            data['container'] = linkText
+        # If we have something between the board and the container
+        elif linkText != data['name']:
+            data['parent'] = int(linkSuffix[7:].split(".")[0])
+        elif linkText == data['name']:
+            data['id'] = int(linkSuffix[7:].split(".")[0])
+
+    # Parse number of pages
+    data['num_pages'] = 0
+    pageNodes = bodyArea.cssselect(
+        "#bodyarea>table td.middletext>a,#bodyarea>table td.middletext>b")
+    for pageNode in pageNodes:
+        if pageNode.text == " ... " or pageNode.text == "All":
+            continue
+        elif int(pageNode.text) > data['num_pages']:
+            data["num_pages"] = int(pageNode.text)
+
+    # Parse the topic IDs
+    topicDict = []
+    topics = docRoot.cssselect(
+        "#bodyarea>div.tborder>table.bordercolor>tr")
+    for topic in topics:
+        topicCells = topic.cssselect("td")
+        if len(topicCells) != 7:
+            continue
+        topicLinks = topicCells[2].cssselect("span>a")
+        topicStartedBy = topicCells[3].cssselect("a")
+        if len(topicLinks) > 0:
+            linkPayload = topicLinks[0].attrib['href'].replace(
+                baseUrl, '')[1:]
+            if linkPayload[0:5] == 'topic':
+                if len(topicStartedBy) > 0:
+                    userPayload = topicStartedBy[0].attrib['href'].replace(
+                        baseUrl, '')[1:]
+                    if userPayload[0:14] == 'action=profile':
+                        topicDict.append({"name": topicLinks[0].text, "id": int(linkPayload[6:-2]), "creatorId":int(userPayload[18:-2])})
+                else:
+                    topicDict.append({"name": topicLinks[0].text, "id": int(linkPayload[6:-2])})
+
+    data['topics'] = topicDict
+
+    return data
 
 def parseProfile(html, todaysDate=datetime.utcnow().date()):
     """Method for parsing profile HTML."""
@@ -152,8 +204,8 @@ def parseProfile(html, todaysDate=datetime.utcnow().date()):
                 continue
             else:
                 sigText = lxml.html.tostring(signature[0])
-                sigText = sigText.split('<div class="signature">')[1]
-                sigText = sigText.split('</div>')[0]
+            #     # sigText = sigText.split('<div class="signature">')[1]
+            #     # sigText = sigText.split('</div>')[0]
                 data['signature'] = sigText
         else:
             label = columns[0].text_content()
@@ -249,9 +301,9 @@ def parseTopicPage(html, todaysDate=datetime.utcnow().date()):
             postTime = innerPost.cssselect(
                 "td.td_headerandpost>table>tr>td>div.smalltext")[0]
             m['post_time'] = postTime.text_content().strip().replace(
-                "Today at", todaysDate.strftime("%B %d, %Y,"))
-            m['post_time'] = datetime.strptime(
-                m['post_time'], "%B %d, %Y, %I:%M:%S %p")
+                "Today at", todaysDate.strftime("%d-%m-%Y"))
+            # m['post_time'] = datetime.strptime(
+            #     m['post_time'], "%d-%m-%Y %I:%M:%S %p")
 
             # Parse the topic position
             messageNumber = innerPost.cssselect(
@@ -275,184 +327,3 @@ def parseTopicPage(html, todaysDate=datetime.utcnow().date()):
     data['messages'] = messages
     return data
 
-
-class BitcointalkTest(unittest.TestCase):
-
-    """"Testing suite for bitcointalk module."""
-
-    def testRequestBoardPage(self):
-        """Method for testing requestBoardPate."""
-        html = requestBoardPage(74)
-        f = codecs.open("{0}/data/test_board_74.html".format(
-            os.path.dirname(os.path.abspath(__file__))), 'w', 'utf-8')
-        f.write(html)
-        f.close()
-        title = lxml.html.fromstring(html).cssselect("title")[0].text
-        errorMsg = "Got unexpected output for webpage title: {0}".format(title)
-        self.assertEqual(title, "Legal", errorMsg)
-
-        html = requestBoardPage(5, 600)
-        f = codecs.open("{0}/data/test_board_5.600.html".format(
-            os.path.dirname(os.path.abspath(__file__))), 'w', 'utf-8')
-        f.write(html)
-        f.close()
-
-    def testRequestProfile(self):
-        """Method for testing requestProfile."""
-        html = requestProfile(12)
-        f = codecs.open("{0}/data/test_profile_12.html".format(
-            os.path.dirname(os.path.abspath(__file__))), 'w', 'utf-8')
-        f.write(html)
-        f.close()
-        title = lxml.html.fromstring(html).cssselect("title")[0].text
-        errorMsg = "Got unexpected output for webpage title: {0}".format(title)
-        self.assertEqual(title, "View the profile of nanaimogold", errorMsg)
-
-    def testRequestTopicPage(self):
-        """Method for testing requestTopicPage."""
-        html = requestTopicPage(14)
-        f = codecs.open("{0}/data/test_topic_14.html".format(
-            os.path.dirname(os.path.abspath(__file__))), 'w', 'utf-8')
-        f.write(html)
-        f.close()
-        title = lxml.html.fromstring(html).cssselect("title")[0].text
-        errorMsg = "Got unexpected output for webpage title: {0}".format(title)
-        self.assertEqual(title, "Break on the supply's increase", errorMsg)
-
-        html = requestTopicPage(602041, 12400)
-        f = codecs.open("{0}/data/test_topic_602041.12400.html".format(
-            os.path.dirname(os.path.abspath(__file__))), 'w', 'utf-8')
-        f.write(html)
-        f.close()
-
-    def testParseBoardPage(self):
-        """Method for testing parseBoardPage."""
-        f = codecs.open("{0}/example/board_74.html".format(
-            os.path.dirname(os.path.abspath(__file__))), 'r', 'utf-8')
-        html = f.read()
-        f.close()
-        data = parseBoardPage(html)
-        topicIds = data.pop("topic_ids")
-        expectedData = {
-            'id': 74,
-            'name': 'Legal',
-            'container': 'Bitcoin',
-            'parent': 1,
-            'num_pages': 23,
-        }
-        self.assertEqual(data, expectedData)
-        self.assertEqual(len(topicIds), 40)
-        self.assertEqual(topicIds[0], 96118)
-        self.assertEqual(topicIds[-1], 684343)
-
-        f = codecs.open("{0}/example/board_5.600.html".format(
-            os.path.dirname(os.path.abspath(__file__))), 'r', 'utf-8')
-        html = f.read()
-        f.close()
-        data = parseBoardPage(html)
-        topicIds = data.pop("topic_ids")
-        expectedData = {
-            'id': 5,
-            'name': 'Marketplace',
-            'container': 'Economy',
-            'parent': None,
-            'num_pages': 128,
-        }
-        self.assertEqual(data, expectedData)
-        self.assertEqual(len(topicIds), 40)
-        self.assertEqual(topicIds[0], 423880)
-        self.assertEqual(topicIds[-1], 430401)
-
-    def testParseProfile(self):
-        """Method for testing parseProfile."""
-        f = codecs.open("{0}/example/profile_12.html".format(
-            os.path.dirname(os.path.abspath(__file__))), 'r', 'utf-8')
-        html = f.read()
-        f.close()
-        todaysDate = date(2014, 7, 29)
-        data = parseProfile(html, todaysDate)
-        expectedData = {
-            'id': 12,
-            'name': 'nanaimogold',
-            'position': 'Sr. Member',
-            'date_registered': datetime(2009, 12, 9, 19, 23, 55),
-            'last_active': datetime(2014, 7, 29, 0, 38, 1),
-            'email': 'hidden',
-            'website_name': 'Nanaimo Gold Digital Currency Exchange',
-            'website_link': 'https://www.nanaimogold.com/',
-            'bitcoin_address': None,
-            'other_contact_info': None,
-            'signature': '<a href="https://www.nanaimogold.com/" ' +
-            'target="_blank">https://www.nanaimogold.com/</a> ' +
-            '- World\'s first bitcoin exchange service'
-        }
-        self.assertEqual(data, expectedData)
-
-    def testParseTopicPage(self):
-        """Method for testing parseTopicPage."""
-        f = codecs.open("{0}/example/topic_14.html".format(
-            os.path.dirname(os.path.abspath(__file__))), 'r', 'utf-8')
-        html = f.read()
-        f.close()
-        data = parseTopicPage(html)
-        messages = data['messages']
-        del data['messages']
-        expectedData = {
-            'id': 14,
-            'name': 'Break on the supply\'s increase',
-            'board': 7,
-            'count_read': 3051,
-            'num_pages': 1
-        }
-        self.assertEqual(data, expectedData)
-
-        self.assertEqual(len(messages), 2)
-
-        firstMessage = messages[0]
-        firstMessageContent = {
-            'raw': firstMessage['content'],
-            'no_html': firstMessage['content_no_html'],
-            'no_quote': firstMessage['content_no_quote'],
-            'no_quote_no_html': firstMessage['content_no_quote_no_html']
-        }
-        del firstMessage['content']
-        del firstMessage['content_no_html']
-        del firstMessage['content_no_quote']
-        del firstMessage['content_no_quote_no_html']
-
-        expectedFirstMessage = {
-            'id': int(53),
-            'member': 16,
-            'subject': 'Break on the supply\'s increase',
-            'link': 'https://bitcointalk.org/index.php?topic=14.msg53#msg53',
-            'topic': 14,
-            'topic_position': 1,
-            'post_time': datetime(2009, 12, 12, 14, 11, 37)
-        }
-        self.assertEqual(firstMessage, expectedFirstMessage)
-
-        self.assertEqual(len(firstMessageContent['raw']), 1276)
-        self.assertEqual(len(firstMessageContent['no_html']), 1208)
-        self.assertEqual(len(firstMessageContent['no_quote']), 1276)
-        self.assertEqual(len(firstMessageContent['no_quote_no_html']), 1208)
-
-        f = codecs.open("{0}/example/topic_602041.12400.html".format(
-            os.path.dirname(os.path.abspath(__file__))), 'r', 'utf-8')
-        html = f.read()
-        f.close()
-        data = parseTopicPage(html)
-        self.assertEqual(data['num_pages'], 621)
-        self.assertEqual(
-            data['messages'][0]['post_time'],
-            datetime.combine(datetime.utcnow().date(), tm(21, 3, 11)))
-        # print "Content of Message 1"
-        # print data['messages'][0]['content']
-        # print "Content of Message 1, No HTML"
-        # print data['messages'][0]['content_no_html']
-        # print "Content of Message 1, No Quote"
-        # print data['messages'][0]['content_no_quote']
-        # print "Content of Message 1, No Quote, No HTML"
-        # print data['messages'][0]['content_no_quote_no_html']
-
-if __name__ == "__main__":
-    unittest.main()
