@@ -54,10 +54,14 @@ def scrapeBoardTopics(boardId, pageNum):
 def scrapeTopicIds(boardId, pageNum):
     """Scrape topic IDs from a board page. Will not store values."""
     offset = (pageNum-1)*40
-    html = bitcointalk.requestBoardPage(boardId, offset)
-    data = bitcointalk.parseBoardPage(html)
-    data = data['topic_ids']
-    return data
+    try:
+        html = bitcointalk.requestBoardPage(boardId, offset)
+        data = bitcointalk.parseBoardPage(html)
+        data = data['topic_ids']
+        return data
+    except Exception as e:
+        raise Exception(e)
+
 
 
 def scrapeMember(memberId):
@@ -68,13 +72,19 @@ def scrapeMember(memberId):
 def scrapeMessages(topicId, pageNum):
     """Scrape all messages on the specified topic, page combination."""
     """CAVEAT: Messages are not memoized."""
-    offset = (pageNum-1)*20
-    html = bitcointalk.requestTopicPage(topicId, offset)
-    data = bitcointalk.parseTopicPage(html)
-    data = data['messages']
-    return data
+    try:
+        offset = (pageNum-1)*20
+        html = bitcointalk.requestTopicPage(topicId, offset)
+        data = bitcointalk.parseTopicPage(html)
+        data = data['messages']
+        return data
+    except Exception as e:
+        raise Exception(e)
 
 
 def scrapeTopic(topicId):
     """Scrape information on the specified topic."""
-    return _scrape('topic', topicId)
+    try:
+        return _scrape('topic', topicId)
+    except Exception as e:
+        raise Exception(e)

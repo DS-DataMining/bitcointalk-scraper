@@ -1,34 +1,38 @@
 """ Module for requesting data from bitcointalk.org and parsing it. """
 import codecs
-from datetime import date
 from datetime import datetime
-from datetime import time as tm
 from html.parser import HTMLParser
-import json
-import logging
 import lxml.html
 import requests
-import os
-from random import random
-import re
-import sys
 import time
-import unittest
+import random
 
 baseUrl = "https://bitcointalk.org/index.php"
 countRequested = 0
 interReqTime = 2
+lastReqTime = None
+
 
 def _request(payloadString):
     """Private method for requesting an arbitrary query string."""
     global countRequested
+    global lastReqTime
+
+    if countRequested % 10 == 0 and lastReqTime is not None:
+        sleepTime = random.uniform(0.5,2.5)
+        if countRequested % 100 == 0:
+           sleepTime = sleepTime * 2
+        time.sleep(sleepTime)
+
+    lastReqTime = time.time()
+
     r = requests.get("{0}?{1}".format(baseUrl, payloadString))
+
     countRequested += 1
     if r.status_code == requests.codes.ok:
         return r.text
     else:
-        raise Exception("Could not process request. \
-            Received status code {0}.".format(r.status_code))
+        raise Exception("Could not process request. Received status code {0}.".format(r.status_code))
 
 def requestBoardPage(boardId, topicOffest=0):
     """Method for requesting a board."""
@@ -182,9 +186,13 @@ def parseProfile(html, todaysDate=datetime.utcnow().date()):
     # Pull associated information
     infoTable = docRoot.cssselect("#bodyarea td.windowbg > table")[0]
     infoRows = infoTable.cssselect("tr")
+
     labelMapping = {
         "Name: ": "name",
         "Position: ": "position",
+        "Posts: ": "posts",
+        "Activity:": "activity",
+        "Merit:": "merit",
         "Date Registered: ": "date_registered",
         "Last Active: ": "last_active",
         "Email: ": "email",
@@ -198,16 +206,16 @@ def parseProfile(html, todaysDate=datetime.utcnow().date()):
     data['signature'] = None
     for row in infoRows:
         columns = row.cssselect("td")
+
         if len(columns) != 2:
             signature = row.cssselect("div.signature")
-            if len(signature) == 0:
-                continue
-            else:
-                sigText = lxml.html.tostring(signature[0])
-            #     # sigText = sigText.split('<div class="signature">')[1]
-            #     # sigText = sigText.split('</div>')[0]
-                data['signature'] = sigText
+            # if len(signature) == 0:
+            #     continue
+            # else:
+                # sigText = lxml.html.tostring(signature[0])
+                # data['signature'] = signature[0].text_content()
         else:
+
             label = columns[0].text_content()
             if label in labelMapping:
                 data[labelMapping[label]] = columns[1].text_content().strip()
@@ -217,8 +225,9 @@ def parseProfile(html, todaysDate=datetime.utcnow().date()):
             elif label == "Date Registered: " or label == "Last Active: ":
                 data[labelMapping[label]] = data[labelMapping[label]].replace(
                     "Today at", todaysDate.strftime("%B %d, %Y,"))
-                data[labelMapping[label]] = datetime.strptime(
-                    data[labelMapping[label]], "%B %d, %Y, %I:%M:%S %p")
+            elif label == "Merit:":
+                data[labelMapping[label]] = columns[1].text_content()
+
     return data
 
 
@@ -312,14 +321,14 @@ def parseTopicPage(html, todaysDate=datetime.utcnow().date()):
 
             # Extract the content
             corePost = innerPost.cssselect("div.post")[0]
-            m['content'] = lxml.html.tostring(corePost).strip()[18:-6]
+            # m['content'] = lxml.html.tostring(corePost).strip()[18:-6]
             m['content_no_html'] = corePost.text_content()
             for child in corePost.iterchildren():
                 if (child.tag == "div" and 'class' in child.attrib and
                     (child.attrib['class'] == 'quoteheader' or
                         child.attrib['class'] == 'quote')):
                     corePost.remove(child)
-            m['content_no_quote'] = lxml.html.tostring(corePost).strip()[18:-6]
+            # m['content_no_quote'] = lxml.html.tostring(corePost).strip()[18:-6]
             m['content_no_quote_no_html'] = corePost.text_content()
 
             messages.append(m)
