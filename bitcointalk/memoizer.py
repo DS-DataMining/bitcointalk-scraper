@@ -1,5 +1,5 @@
 """ Module for loading parsed data from bitcointalk into PostgreSQL. """
-import bitcointalk
+from . import bitcointalk
 
 memo = {
     'boards': set(),

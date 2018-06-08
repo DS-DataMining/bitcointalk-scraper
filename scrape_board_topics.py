@@ -1,8 +1,8 @@
 """ Core scraper for bitcointalk.org. """
-import bitcointalk
+# import bitcointalk
+from bitcointalk import memoizer
+from bitcointalk import bitcointalk
 import logging
-import memoizer
-import traceback
 import getopt
 import sys
 import time
@@ -58,7 +58,6 @@ def main(argv):
                         topic = memoizer.scrapeTopic(topicId)
                         topicPageNum = 1
                         while topicPageNum <= topic['num_pages']:
-                            logging.info("Started scraping topic page {0}".format(topicPageNum))
                             try:
                                 messages = memoizer.scrapeMessages(topic['id'], topicPageNum)
                                 for message in messages:

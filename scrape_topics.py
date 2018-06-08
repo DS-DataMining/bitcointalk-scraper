@@ -1,8 +1,8 @@
 """ Core scraper for bitcointalk.org. """
-import bitcointalk
 import logging
-import memoizer
 import traceback
+from bitcointalk import memoizer
+from bitcointalk import bitcointalk
 
 startTopicId=2415854
 stopTopicId=2415854

@@ -1,7 +1,7 @@
 """ Core scraper for bitcointalk.org. """
-import bitcointalk
 import logging
-import memoizer
+from bitcointalk import memoizer
+from bitcointalk import bitcointalk
 
 boardId = 14
 
@@ -19,7 +19,7 @@ result = []
 
 for boardPageNum in range(1, board['num_pages'] + 1):
     logging.info(">Scraping page {0}...".format(boardPageNum))
-    topics = memoizer.scrapeBoardTopics(boardId,boardPageNum)
+    topics = memoizer.scrapeBoardTopics(boardId, boardPageNum)
     for topic in topics:
         creator = memoizer.scrapeMember(topic['creatorId'])
         result.append({"id": topic['id'], "name": topic['name'], "creator":creator})
