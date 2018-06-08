@@ -1,15 +1,11 @@
 """ Module for requesting data from bitcointalk.org and parsing it. """
 import codecs
-from datetime import date
 from datetime import datetime
-from datetime import time as tm
 from html.parser import HTMLParser
-import json
-import logging
 import lxml.html
 import requests
 import time
-from random import random
+import random
 
 baseUrl = "https://bitcointalk.org/index.php"
 countRequested = 0
@@ -22,23 +18,20 @@ def _request(payloadString):
     global countRequested
     global lastReqTime
 
-    if countRequested % 5 == 0 and lastReqTime is not None:
-        logging.info("Sleep")
-
-        if time.time() - lastReqTime < interReqTime:
-            timeToSleep = random() * (interReqTime - time.time() + lastReqTime) * 2
-            time.sleep(5)
+    if countRequested % 10 == 0 and lastReqTime is not None:
+        sleepTime = random.uniform(0.5,2.5)
+        if countRequested % 100 == 0:
+           sleepTime = sleepTime * 2
+        time.sleep(sleepTime)
 
     lastReqTime = time.time()
 
     r = requests.get("{0}?{1}".format(baseUrl, payloadString))
 
     countRequested += 1
-    print(countRequested)
     if r.status_code == requests.codes.ok:
         return r.text
     else:
-        print(countRequested)
         raise Exception("Could not process request. Received status code {0}.".format(r.status_code))
 
 def requestBoardPage(boardId, topicOffest=0):
