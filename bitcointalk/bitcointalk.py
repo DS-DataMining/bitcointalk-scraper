@@ -6,6 +6,7 @@ import lxml.html
 import requests
 import time
 import random
+import json
 
 baseUrl = "https://bitcointalk.org/index.php"
 countRequested = 0
@@ -331,7 +332,7 @@ def parseTopicPage(html, todaysDate=datetime.utcnow().date()):
             # m['content_no_quote'] = lxml.html.tostring(corePost).strip()[18:-6]
             m['content_no_quote_no_html'] = corePost.text_content()
 
-            messages.append(m)
+            messages.append(json.dumps(m))
 
     data['messages'] = messages
     return data
