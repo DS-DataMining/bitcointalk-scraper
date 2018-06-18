@@ -1,21 +1,22 @@
 """ Core scraper for bitcointalk.org. """
-# import bitcointalk
 from bitcointalk import memoizer
 from bitcointalk import bitcointalk
 import logging
+import traceback
 import getopt
 import sys
 import time
+import json
 
 def main(argv):
     if len(argv) == 0:
-        print('You must pass some parameters. Use \"-h\" to help.')
+        print('You must pass some parameters')
         return
 
     try:
         opts, args = getopt.getopt(argv, "", (
             "boardId=",
-            "everyn="
+            "everyN="
         ))
 
         boardId = None
@@ -25,25 +26,20 @@ def main(argv):
             if opt == "--boardId":
                 boardId = int(arg)
 
-            elif opt == '--everyn' and arg != '':
+            elif opt == '--everyN' and arg != '':
                 everyN = int(arg)
 
-        if everyN is None:
-            everyN = 10
+        board = memoizer.scrapeBoard(boardId)
 
+        sleepTime = 3
         results = []
+
         logging.basicConfig(
             level=logging.INFO,
             format='%(asctime)s %(levelname)s:%(message)s',
             datefmt='%m/%d/%Y %I:%M:%S %p')
 
-        logging.info("Beginning scrape of board ID {0}".format(boardId))
-        board = memoizer.scrapeBoard(boardId)
-        logging.info("Found {0} topic pages in board".format(
-            board['num_pages']))
-
-        sleepTime = 4
-        numberOfMessages=0
+        logging.info("Beginning scrape of board ID...".format(boardId))
 
         boardPageNum = 1
         while boardPageNum <= board['num_pages']:
@@ -52,7 +48,6 @@ def main(argv):
                 topicIndex = 0
                 while topicIndex < len(topicIds):
                     topicId = topicIds[topicIndex]
-                    logging.info("Started scraping of topic id {0}".format(topicId))
 
                     try:
                         topic = memoizer.scrapeTopic(topicId)
@@ -62,31 +57,27 @@ def main(argv):
                                 messages = memoizer.scrapeMessages(topic['id'], topicPageNum)
                                 for message in messages:
                                     results.append(message)
-                                    if len(results) % everyN == 0:
-                                        numberOfMessages = numberOfMessages + everyN
-                                        print(results)
-                                        sys.stdout.flush()
+                                    if len(results) == everyN:
+                                        print(results);
+                                        # print(json.dumps(results))
+                                        # sys.stdout.flush()
                                         results = []
                             except Exception as e:
-                                logging.error(" Could not request URL for topic page number {0}".format(topicPageNum))
-                                logging.info(" Sleep for {0}s".format(sleepTime))
+                                print("sleep");
                                 time.sleep(sleepTime)
                                 topicPageNum = topicPageNum - 1
                             finally:
                                 topicPageNum = topicPageNum + 1
 
                     except Exception as e:
-                        logging.error(">>Could not request URL for topic {0}".format(
-                            topicId))
-                        logging.info(" Sleep for {0}s".format(sleepTime))
+                        print("sleep");
                         time.sleep(sleepTime)
                         topicIndex = topicIndex - 1
                     finally:
                         topicIndex = topicIndex + 1
 
             except Exception as e:
-                logging.error(">>Could not request URL for board page number {0}".format(boardPageNum))
-                logging.info(" Sleep for {0}s".format(sleepTime))
+                print("sleep");
                 time.sleep(sleepTime)
                 boardPageNum = boardPageNum - 1
             finally:
@@ -95,15 +86,13 @@ def main(argv):
         if len(results) > 0:
             print(results)
             sys.stdout.flush()
+            results = []
 
-        logging.info("All done.")
-        logging.info("Made {0} requests in total.".format(bitcointalk.countRequested))
 
     except Exception as argv:
         print('Arguments parser error' + argv)
     finally:
         pass
-
 
 if __name__ == '__main__':
     main(sys.argv[1:])

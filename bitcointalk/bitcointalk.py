@@ -6,8 +6,6 @@ import lxml.html
 import requests
 import time
 import random
-import json
-
 baseUrl = "https://bitcointalk.org/index.php"
 countRequested = 0
 interReqTime = 2
@@ -323,16 +321,17 @@ def parseTopicPage(html, todaysDate=datetime.utcnow().date()):
             # Extract the content
             corePost = innerPost.cssselect("div.post")[0]
             # m['content'] = lxml.html.tostring(corePost).strip()[18:-6]
-            m['content_no_html'] = corePost.text_content()
+            # m['content_no_html'] = corePost.text_content()
             for child in corePost.iterchildren():
                 if (child.tag == "div" and 'class' in child.attrib and
                     (child.attrib['class'] == 'quoteheader' or
                         child.attrib['class'] == 'quote')):
                     corePost.remove(child)
-            # m['content_no_quote'] = lxml.html.tostring(corePost).strip()[18:-6]
-            m['content_no_quote_no_html'] = corePost.text_content()
 
-            messages.append(json.dumps(m))
+            # Content without quotes and html
+            m['content'] = corePost.text_content()
+
+            messages.append(m)
 
     data['messages'] = messages
     return data
