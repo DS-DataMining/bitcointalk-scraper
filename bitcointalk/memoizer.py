@@ -29,19 +29,19 @@ entityFunctions = {
     }
 }
 
-def _scrape(entity, entityId):
+def _scrape(entity, entityId, since, until):
     # global memo
     global entityFunctions
     entityPlural = "{0}s".format(entity)
     html = entityFunctions[entity]['requestor'](entityId)
-    datum = entityFunctions[entity]['parser'](html)
+    datum = entityFunctions[entity]['parser'](html, since, until)
     memo[entityPlural].add(entityId)
     return datum
 
 
-def scrapeBoard(boardId):
+def scrapeBoard(boardId, since=None, until=None):
     """Scrape information on the specified board."""
-    return _scrape('board', boardId)
+    return _scrape('board', boardId, since, until)
 
 def scrapeBoardTopics(boardId, pageNum):
     """Scrape topic IDs from a board page. Will not store values."""
@@ -51,12 +51,12 @@ def scrapeBoardTopics(boardId, pageNum):
     data = data['topics']
     return data
 
-def scrapeTopicIds(boardId, pageNum):
+def scrapeTopicIds(boardId, pageNum, since=None, until=None):
     """Scrape topic IDs from a board page. Will not store values."""
     offset = (pageNum-1)*40
     try:
         html = bitcointalk.requestBoardPage(boardId, offset)
-        data = bitcointalk.parseBoardPage(html)
+        data = bitcointalk.parseBoardPage(html, since, until)
         data = data['topic_ids']
         return data
     except Exception as e:

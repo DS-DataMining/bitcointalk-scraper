@@ -6,6 +6,7 @@ import lxml.html
 import requests
 import time
 import random
+
 baseUrl = "https://bitcointalk.org/index.php"
 countRequested = 0
 interReqTime = 2
@@ -49,7 +50,7 @@ def requestTopicPage(topicId, messageOffset=0):
     return _request("topic={0}.{1}".format(topicId, messageOffset))
 
 
-def parseBoardPage(html):
+def parseBoardPage(html, since=None, until=None):
     """Method for parsing board HTML. Will extract topic IDs."""
     data = {}
 
@@ -92,16 +93,40 @@ def parseBoardPage(html):
     topicIds = []
     topics = docRoot.cssselect(
         "#bodyarea>div.tborder>table.bordercolor>tr")
+
+    if since != None:
+        since = datetime.strptime(since, '%Y-%m-%d').date()
+    if until != None:
+        until = datetime.strptime(until, '%Y-%m-%d').date()
+    else:
+        until = datetime.now().date()
+
     for topic in topics:
         topicCells = topic.cssselect("td")
         if len(topicCells) != 7:
             continue
         topicLinks = topicCells[2].cssselect("span>a")
-        if len(topicLinks) > 0:
-            linkPayload = topicLinks[0].attrib['href'].replace(
-                baseUrl, '')[1:]
-            if linkPayload[0:5] == 'topic':
-                topicIds.append(int(linkPayload[6:-2]))
+
+        lastPost = topicCells[6].cssselect("span")[0].text;
+        lastPost = lastPost.replace("\t", "").replace("\n", "")
+
+        if lastPost != "":
+            lastPostDate = datetime.strptime(lastPost, '%B %d, %Y, %I:%M:%S %p').date()
+            if since != None:
+                if since <= lastPostDate and lastPostDate <= until:
+                    if len(topicLinks) > 0:
+                        linkPayload = topicLinks[0].attrib['href'].replace(
+                            baseUrl, '')[1:]
+                        if linkPayload[0:5] == 'topic':
+                            topicIds.append(int(linkPayload[6:-2]))
+            else:
+                if lastPostDate <= until:
+                    if len(topicLinks) > 0:
+                        linkPayload = topicLinks[0].attrib['href'].replace(
+                            baseUrl, '')[1:]
+                        if linkPayload[0:5] == 'topic':
+                            topicIds.append(int(linkPayload[6:-2]))
+
     data['topic_ids'] = topicIds
 
     return data

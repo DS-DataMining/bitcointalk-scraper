@@ -16,11 +16,15 @@ def main(argv):
     try:
         opts, args = getopt.getopt(argv, "", (
             "boardId=",
-            "everyN="
+            "everyN=",
+            "since=",
+            "until="
         ))
 
         boardId = None
         everyN = None
+        since = None
+        until = None
 
         for opt, arg in opts:
             if opt == "--boardId":
@@ -29,7 +33,13 @@ def main(argv):
             elif opt == '--everyN' and arg != '':
                 everyN = int(arg)
 
-        board = memoizer.scrapeBoard(boardId)
+            elif opt == '--since' and arg != '':
+                since = arg
+
+            elif opt == '--until' and arg != '':
+                until = arg
+
+        board = memoizer.scrapeBoard(boardId, since, until)
 
         sleepTime = 3
         results = []
@@ -44,13 +54,15 @@ def main(argv):
         boardPageNum = 1
         while boardPageNum <= board['num_pages']:
             try:
-                topicIds = memoizer.scrapeTopicIds(boardId, boardPageNum)
+                topicIds = memoizer.scrapeTopicIds(boardId, boardPageNum, since, until)
                 topicIndex = 0
                 while topicIndex < len(topicIds):
                     topicId = topicIds[topicIndex]
 
                     try:
                         topic = memoizer.scrapeTopic(topicId)
+                        # print(topic);
+                        break;
                         topicPageNum = 1
                         while topicPageNum <= topic['num_pages']:
                             try:
@@ -58,26 +70,23 @@ def main(argv):
                                 for message in messages:
                                     results.append(message)
                                     if len(results) == everyN:
-                                        print(results);
+                                        # print(results);
                                         # print(json.dumps(results))
                                         # sys.stdout.flush()
                                         results = []
                             except Exception as e:
-                                print("sleep");
                                 time.sleep(sleepTime)
                                 topicPageNum = topicPageNum - 1
                             finally:
                                 topicPageNum = topicPageNum + 1
 
                     except Exception as e:
-                        print("sleep");
                         time.sleep(sleepTime)
                         topicIndex = topicIndex - 1
                     finally:
                         topicIndex = topicIndex + 1
 
             except Exception as e:
-                print("sleep");
                 time.sleep(sleepTime)
                 boardPageNum = boardPageNum - 1
             finally:
