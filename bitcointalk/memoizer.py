@@ -34,7 +34,9 @@ def _scrape(entity, entityId, since, until):
     global entityFunctions
     entityPlural = "{0}s".format(entity)
     html = entityFunctions[entity]['requestor'](entityId)
+
     datum = entityFunctions[entity]['parser'](html, since, until)
+
     memo[entityPlural].add(entityId)
     return datum
 
@@ -51,13 +53,13 @@ def scrapeBoardTopics(boardId, pageNum):
     data = data['topics']
     return data
 
-def scrapeTopicIds(boardId, pageNum, since=None, until=None):
+def scrapeTopicIds(boardId, pageNum, since, until):
     """Scrape topic IDs from a board page. Will not store values."""
     offset = (pageNum-1)*40
     try:
         html = bitcointalk.requestBoardPage(boardId, offset)
         data = bitcointalk.parseBoardPage(html, since, until)
-        data = data['topic_ids']
+        # data = data['topic_ids']
         return data
     except Exception as e:
         raise Exception(e)
@@ -69,22 +71,22 @@ def scrapeMember(memberId):
     return _scrape('member', memberId)
 
 
-def scrapeMessages(topicId, pageNum):
+def scrapeMessages(topicId, pageNum, since, until):
     """Scrape all messages on the specified topic, page combination."""
     """CAVEAT: Messages are not memoized."""
     try:
         offset = (pageNum-1)*20
         html = bitcointalk.requestTopicPage(topicId, offset)
-        data = bitcointalk.parseTopicPage(html)
+        data = bitcointalk.parseTopicPage(html, since, until)
         data = data['messages']
         return data
     except Exception as e:
         raise Exception(e)
 
 
-def scrapeTopic(topicId):
+def scrapeTopic(topicId, since, until):
     """Scrape information on the specified topic."""
     try:
-        return _scrape('topic', topicId)
+        return _scrape('topic', topicId, since, until)
     except Exception as e:
         raise Exception(e)
