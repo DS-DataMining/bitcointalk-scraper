@@ -19,7 +19,7 @@ def _request(payloadString):
     global lastReqTime
 
     if countRequested % 10 == 0 and lastReqTime is not None:
-        sleepTime = random.uniform(0.5,2.5)
+        sleepTime = random.uniform(0.5,2)
         if countRequested % 100 == 0:
            sleepTime = sleepTime * 2
         time.sleep(sleepTime)
@@ -50,7 +50,7 @@ def requestTopicPage(topicId, messageOffset=0):
     return _request("topic={0}.{1}".format(topicId, messageOffset))
 
 
-def parseBoardPage(html, since=None, until=datetime.now().date()):
+def parseBoardPage(html, since=None, until=datetime.utcnow().date()):
     """Method for parsing board HTML. Will extract topic IDs."""
     data = {}
 
@@ -99,33 +99,45 @@ def parseBoardPage(html, since=None, until=datetime.now().date()):
     if until != None:
         until = datetime.strptime(until, '%Y-%m-%d').date()
     else:
-        until = datetime.now().date()
+        until = datetime.utcnow().date()
 
-    index = 0;
+    data['last_edit_first_topic'] = None
+
     for topic in topics:
         topicCells = topic.cssselect("td")
         if len(topicCells) != 7:
             continue
         topicLinks = topicCells[2].cssselect("span>a")
+        images = topicCells[2].cssselect("img")
 
-        lastPost = topicCells[6].cssselect("span")[0].text;
+        pinned = False
+        if len(images) > 0:
+            for image in images:
+                if image.get("src")[-15:] == "show_sticky.gif":
+                    pinned = True
+
+        lastPost = topicCells[6].cssselect("span")[0].text
+
         lastPost = lastPost.replace("\t", "").replace("\n", "")
-
-        if lastPost != "":
+        if lastPost == "":
+            lastPost = topicCells[6].cssselect("span>b")[0].text
+            if lastPost == "Today":
+                lastPostDate = datetime.utcnow().date()
+        else:
             lastPostDate = datetime.strptime(lastPost, '%B %d, %Y, %I:%M:%S %p').date()
-            if index == 0:
-                data['last_edit_first_topic'] = lastPostDate
-                index = index + 1
-            if lastPostDate <= until:
-                if since == None or since <= lastPostDate:
-                    if len(topicLinks) > 0:
-                        linkPayload = topicLinks[0].attrib['href'].replace(
-                            baseUrl, '')[1:]
-                        if linkPayload[0:5] == 'topic':
-                            topicIds.append(int(linkPayload[6:-2]))
+
+        if data['last_edit_first_topic'] == None and pinned is False:
+            data['last_edit_first_topic'] = lastPostDate
+
+        if lastPostDate <= until:
+            if since == None or since <= lastPostDate:
+                if len(topicLinks) > 0:
+                    linkPayload = topicLinks[0].attrib['href'].replace(
+                        baseUrl, '')[1:]
+                    if linkPayload[0:5] == 'topic':
+                        topicIds.append(int(linkPayload[6:-2]))
 
     data['topic_ids'] = topicIds
-
     return data
 
 
@@ -252,7 +264,7 @@ def parseProfile(html, todaysDate=datetime.utcnow().date()):
     return data
 
 
-def parseTopicPage(html, since, until=datetime.now().date(), todaysDate=datetime.utcnow().date()):
+def parseTopicPage(html, since, until=datetime.utcnow().date(), todaysDate=datetime.utcnow().date()):
     """Method for parsing topic HTML. Will extract messages."""
 
     if since != None:
@@ -260,7 +272,7 @@ def parseTopicPage(html, since, until=datetime.now().date(), todaysDate=datetime
     if until != None:
         until = datetime.strptime(until, '%Y-%m-%d').date()
     else:
-        until = datetime.now().date()
+        until = datetime.utcnow().date()
 
     data = {}
     h = HTMLParser()
@@ -339,7 +351,7 @@ def parseTopicPage(html, since, until=datetime.now().date(), todaysDate=datetime
             postTime = innerPost.cssselect(
                 "td.td_headerandpost>table>tr>td>div.smalltext")[0]
             m['post_time'] = postTime.text_content().strip().replace(
-                "Today at", todaysDate.strftime("%d-%m-%Y"))
+                "Today at", todaysDate.strftime('%B %d, %Y,'))
 
             # Parse the topic position
             messageNumber = innerPost.cssselect(
@@ -359,7 +371,7 @@ def parseTopicPage(html, since, until=datetime.now().date(), todaysDate=datetime
             # Content without quotes and html
             m['content'] = corePost.text_content()
 
-            postTimeDate = datetime.strptime(m['post_time'], '%B %d, %Y, %H:%M:%S %p').date()
+            postTimeDate = datetime.strptime(m['post_time'], '%B %d, %Y, %I:%M:%S %p').date()
 
             if postTimeDate <= until:
                 if since == None or since <= postTimeDate:

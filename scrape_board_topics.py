@@ -1,8 +1,6 @@
 """ Core scraper for bitcointalk.org. """
 from bitcointalk import memoizer
-from bitcointalk import bitcointalk
 import logging
-import traceback
 import getopt
 import sys
 import time
@@ -57,10 +55,10 @@ def main(argv):
             try:
                 data = memoizer.scrapeTopicIds(boardId, boardPageNum, since, until)
                 topicIds = data['topic_ids']
-
                 print(data)
                 if len(topicIds) == 0 and \
                         since != None and \
+                        data['last_edit_first_topic'] != None and \
                         sinceDate >= data['last_edit_first_topic']:
                     break;
 
@@ -79,10 +77,9 @@ def main(argv):
                                 for message in messages:
                                     results.append(message)
                                     if len(results) == everyN:
-                                        # print(results)
-                                        # print(results);
+                                        print(results)
                                         # print(json.dumps(results))
-                                        # sys.stdout.flush()
+                                        sys.stdout.flush()
                                         results = []
                             except Exception as e:
                                 print(e)
@@ -107,10 +104,10 @@ def main(argv):
 
         if len(results) > 0:
             print(results)
-            # sys.stdout.flush()
+            sys.stdout.flush()
             results = []
-        logging.info("all done")
 
+        logging.info("All done")
 
     except Exception as argv:
         print('Arguments parser error' + argv)
