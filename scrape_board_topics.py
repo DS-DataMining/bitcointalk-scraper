@@ -34,6 +34,7 @@ def main(argv):
 
             elif opt == '--since' and arg != '':
                 since = arg
+                sinceDate = datetime.strptime(since, '%Y-%m-%d').date()
 
             elif opt == '--until' and arg != '':
                 until = arg
@@ -48,9 +49,7 @@ def main(argv):
             datefmt='%m/%d/%Y %I:%M:%S %p')
 
         logging.info("Beginning scrape of board ID...".format(boardId))
-
         boardPageNum = 1
-        sinceDate = datetime.strptime(since, '%Y-%m-%d').date()
         while boardPageNum <= board['num_pages']:
             try:
                 data = memoizer.scrapeTopicIds(boardId, boardPageNum, since, until)
@@ -58,9 +57,9 @@ def main(argv):
                 print(data)
                 if len(topicIds) == 0 and \
                         since != None and \
-                        data['last_edit_first_topic'] != None and \
-                        sinceDate >= data['last_edit_first_topic']:
-                    break;
+                        data['last_edit_first_topic'] != None:
+                    if sinceDate >= data['last_edit_first_topic']:
+                        break;
 
                 topicIndex = 0
                 while topicIndex < len(topicIds):

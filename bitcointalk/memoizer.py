@@ -29,7 +29,7 @@ entityFunctions = {
     }
 }
 
-def _scrape(entity, entityId, since, until):
+def _scrape(entity, entityId, since=None, until=None):
     # global memo
     global entityFunctions
     entityPlural = "{0}s".format(entity)
@@ -53,7 +53,7 @@ def scrapeBoardTopics(boardId, pageNum):
     data = data['topics']
     return data
 
-def scrapeTopicIds(boardId, pageNum, since, until):
+def scrapeTopicIds(boardId, pageNum, since=None, until=None):
     """Scrape topic IDs from a board page. Will not store values."""
     offset = (pageNum-1)*40
     try:
@@ -71,7 +71,7 @@ def scrapeMember(memberId):
     return _scrape('member', memberId)
 
 
-def scrapeMessages(topicId, pageNum, since, until):
+def scrapeMessages(topicId, pageNum, since=None, until=None):
     """Scrape all messages on the specified topic, page combination."""
     """CAVEAT: Messages are not memoized."""
     try:
@@ -84,7 +84,7 @@ def scrapeMessages(topicId, pageNum, since, until):
         raise Exception(e)
 
 
-def scrapeTopic(topicId, since, until):
+def scrapeTopic(topicId, since=None, until=None):
     """Scrape information on the specified topic."""
     try:
         return _scrape('topic', topicId, since, until)

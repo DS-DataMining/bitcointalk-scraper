@@ -1,6 +1,6 @@
 """ Module for requesting data from bitcointalk.org and parsing it. """
 import codecs
-from datetime import datetime
+from datetime import datetime, timedelta
 from html.parser import HTMLParser
 import lxml.html
 import requests
@@ -50,7 +50,7 @@ def requestTopicPage(topicId, messageOffset=0):
     return _request("topic={0}.{1}".format(topicId, messageOffset))
 
 
-def parseBoardPage(html, since=None, until=datetime.utcnow().date()):
+def parseBoardPage(html, since=None, until=None):
     """Method for parsing board HTML. Will extract topic IDs."""
     data = {}
 
@@ -99,7 +99,7 @@ def parseBoardPage(html, since=None, until=datetime.utcnow().date()):
     if until != None:
         until = datetime.strptime(until, '%Y-%m-%d').date()
     else:
-        until = datetime.utcnow().date()
+        until = (datetime.utcnow() + timedelta(days=1)).date()
 
     data['last_edit_first_topic'] = None
 
@@ -129,7 +129,7 @@ def parseBoardPage(html, since=None, until=datetime.utcnow().date()):
         if data['last_edit_first_topic'] == None and pinned is False:
             data['last_edit_first_topic'] = lastPostDate
 
-        if lastPostDate <= until:
+        if lastPostDate < until:
             if since == None or since <= lastPostDate:
                 if len(topicLinks) > 0:
                     linkPayload = topicLinks[0].attrib['href'].replace(
@@ -264,7 +264,7 @@ def parseProfile(html, todaysDate=datetime.utcnow().date()):
     return data
 
 
-def parseTopicPage(html, since, until=datetime.utcnow().date(), todaysDate=datetime.utcnow().date()):
+def parseTopicPage(html, since=None, until=None, todaysDate=datetime.utcnow().date()):
     """Method for parsing topic HTML. Will extract messages."""
 
     if since != None:
@@ -272,7 +272,7 @@ def parseTopicPage(html, since, until=datetime.utcnow().date(), todaysDate=datet
     if until != None:
         until = datetime.strptime(until, '%Y-%m-%d').date()
     else:
-        until = datetime.utcnow().date()
+        until = (datetime.utcnow() + timedelta(days=1)).date()
 
     data = {}
     h = HTMLParser()
@@ -373,7 +373,7 @@ def parseTopicPage(html, since, until=datetime.utcnow().date(), todaysDate=datet
 
             postTimeDate = datetime.strptime(m['post_time'], '%B %d, %Y, %I:%M:%S %p').date()
 
-            if postTimeDate <= until:
+            if postTimeDate < until:
                 if since == None or since <= postTimeDate:
                     messages.append(m)
 
