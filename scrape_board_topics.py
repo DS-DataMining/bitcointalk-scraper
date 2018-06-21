@@ -5,7 +5,7 @@ import getopt
 import sys
 import time
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 
 def main(argv):
     if len(argv) == 0:
@@ -24,6 +24,7 @@ def main(argv):
         everyN = None
         since = None
         until = None
+        untilDate = (datetime.utcnow() + timedelta(days=1)).date()
 
         for opt, arg in opts:
             if opt == "--boardId":
@@ -38,6 +39,7 @@ def main(argv):
 
             elif opt == '--until' and arg != '':
                 until = arg
+                untilDate = datetime.strptime(until, '%Y-%m-%d').date()
 
         board = memoizer.scrapeBoard(boardId, since, until)
         sleepTime = 3
@@ -54,7 +56,6 @@ def main(argv):
             try:
                 data = memoizer.scrapeTopicIds(boardId, boardPageNum, since, until)
                 topicIds = data['topic_ids']
-                print(data)
                 if len(topicIds) == 0 and \
                         since != None and \
                         data['last_edit_first_topic'] != None:
@@ -64,15 +65,23 @@ def main(argv):
                 topicIndex = 0
                 while topicIndex < len(topicIds):
                     topicId = topicIds[topicIndex]
-                    print(topicId)
+                    logging.info("Topic id: {0}".format(topicId))
                     try:
                         topic = memoizer.scrapeTopic(topicId, since, until)
 
                         topicPageNum = 1
                         while topicPageNum <= topic['num_pages']:
-                            print(topicPageNum)
+                            logging.info("Topic page number: {0}".format(topicPageNum))
                             try:
-                                messages = memoizer.scrapeMessages(topic['id'], topicPageNum, since, until)
+                                dataMessages = memoizer.scrapeMessages(topic['id'], topicPageNum, since, until)
+                                messages = dataMessages['messages']
+                                logging.info("Found {0} messages".format(len(messages)))
+
+                                if len(messages) == 0 and \
+                                    dataMessages['page_first_message'] != None and \
+                                    dataMessages['page_first_message'] >= untilDate:
+                                    break
+
                                 for message in messages:
                                     results.append(message)
                                     if len(results) == everyN:
@@ -81,21 +90,21 @@ def main(argv):
                                         sys.stdout.flush()
                                         results = []
                             except Exception as e:
-                                print(e)
+                                logging.exception(e)
                                 time.sleep(sleepTime)
                                 topicPageNum = topicPageNum - 1
                             finally:
                                 topicPageNum = topicPageNum + 1
 
                     except Exception as e:
-                        print(e)
+                        logging.exception(e)
                         time.sleep(sleepTime)
                         topicIndex = topicIndex - 1
                     finally:
                         topicIndex = topicIndex + 1
 
             except Exception as e:
-                print(e)
+                logging.exception(e)
                 time.sleep(sleepTime)
                 boardPageNum = boardPageNum - 1
             finally:
@@ -106,7 +115,8 @@ def main(argv):
             sys.stdout.flush()
             results = []
 
-        logging.info("All done")
+        doneMessage = "All done"
+        print(doneMessage)
 
     except Exception as argv:
         print('Arguments parser error' + argv)

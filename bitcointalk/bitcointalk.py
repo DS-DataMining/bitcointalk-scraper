@@ -96,10 +96,6 @@ def parseBoardPage(html, since=None, until=None):
 
     if since != None:
         since = datetime.strptime(since, '%Y-%m-%d').date()
-    if until != None:
-        until = datetime.strptime(until, '%Y-%m-%d').date()
-    else:
-        until = (datetime.utcnow() + timedelta(days=1)).date()
 
     data['last_edit_first_topic'] = None
 
@@ -129,13 +125,12 @@ def parseBoardPage(html, since=None, until=None):
         if data['last_edit_first_topic'] == None and pinned is False:
             data['last_edit_first_topic'] = lastPostDate
 
-        if lastPostDate < until:
-            if since == None or since <= lastPostDate:
-                if len(topicLinks) > 0:
-                    linkPayload = topicLinks[0].attrib['href'].replace(
-                        baseUrl, '')[1:]
-                    if linkPayload[0:5] == 'topic':
-                        topicIds.append(int(linkPayload[6:-2]))
+        if since == None or since <= lastPostDate:
+            if len(topicLinks) > 0:
+                linkPayload = topicLinks[0].attrib['href'].replace(
+                    baseUrl, '')[1:]
+                if linkPayload[0:5] == 'topic':
+                    topicIds.append(int(linkPayload[6:-2]))
 
     data['topic_ids'] = topicIds
     return data
@@ -317,6 +312,8 @@ def parseTopicPage(html, since=None, until=None, todaysDate=datetime.utcnow().da
     firstPostClass = None
     posts = docRoot.cssselect(
         "form#quickModForm>table.bordercolor>tr")
+
+    data['page_first_message'] = None
     for post in posts:
         if firstPostClass is None:
             firstPostClass = post.attrib["class"]
@@ -362,6 +359,7 @@ def parseTopicPage(html, since=None, until=None, todaysDate=datetime.utcnow().da
             corePost = innerPost.cssselect("div.post")[0]
             # m['content'] = lxml.html.tostring(corePost).strip()[18:-6]
             # m['content_no_html'] = corePost.text_content()
+
             for child in corePost.iterchildren():
                 if (child.tag == "div" and 'class' in child.attrib and
                     (child.attrib['class'] == 'quoteheader' or
@@ -372,6 +370,9 @@ def parseTopicPage(html, since=None, until=None, todaysDate=datetime.utcnow().da
             m['content'] = corePost.text_content()
 
             postTimeDate = datetime.strptime(m['post_time'], '%B %d, %Y, %I:%M:%S %p').date()
+
+            if data['page_first_message'] == None:
+                data['page_first_message'] = postTimeDate
 
             if postTimeDate < until:
                 if since == None or since <= postTimeDate:

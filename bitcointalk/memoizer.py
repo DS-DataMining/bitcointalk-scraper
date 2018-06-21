@@ -78,7 +78,7 @@ def scrapeMessages(topicId, pageNum, since=None, until=None):
         offset = (pageNum-1)*20
         html = bitcointalk.requestTopicPage(topicId, offset)
         data = bitcointalk.parseTopicPage(html, since, until)
-        data = data['messages']
+        # data = data['messages']
         return data
     except Exception as e:
         raise Exception(e)
